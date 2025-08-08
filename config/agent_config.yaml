@@ -1,0 +1,147 @@
+# Core Network DevOps Agent Configuration
+# Based on Amazon Bedrock AgentCore framework patterns
+
+agent:
+  name: "CoreNetworkDevOpsAgent"
+  description: "AI agent for core network infrastructure and DevOps operations"
+  version: "1.0.0"
+  
+  # Bedrock model configuration
+  model:
+    model_id: "anthropic.claude-3-sonnet-20240229-v1:0"
+    region: "us-east-1"
+    max_tokens: 4000
+    temperature: 0.1
+    
+  # Agent behavior configuration
+  behavior:
+    max_conversation_turns: 50
+    enable_memory: true
+    memory_retention_hours: 24
+    enable_tool_chaining: true
+    max_tool_calls_per_turn: 5
+
+# Tool configuration
+tools:
+  aws_operations:
+    enabled: true
+    description: "AWS infrastructure operations"
+    timeout_seconds: 30
+    retry_attempts: 3
+    
+  kubernetes_operations:
+    enabled: true
+    description: "Kubernetes cluster and resource management"
+    timeout_seconds: 45
+    retry_attempts: 2
+    
+  network_functions:
+    enabled: true
+    description: "Core network function management"
+    timeout_seconds: 60
+    retry_attempts: 3
+    
+  monitoring:
+    enabled: true
+    description: "Monitoring and observability operations"
+    timeout_seconds: 30
+    retry_attempts: 2
+
+# AWS configuration
+aws:
+  region: "us-east-1"
+  profile: "default"
+  
+  # Service-specific configurations
+  services:
+    ec2:
+      default_instance_type: "t3.medium"
+      default_key_pair: "core-network-keypair"
+      
+    eks:
+      default_node_group_size: 3
+      default_instance_types: ["t3.medium", "t3.large"]
+      
+    vpc:
+      default_cidr: "10.0.0.0/16"
+      enable_dns_hostnames: true
+      enable_dns_support: true
+
+# Kubernetes configuration
+kubernetes:
+  config_path: "~/.kube/config"
+  default_namespace: "core-network"
+  
+  # Network function defaults
+  network_functions:
+    default_image_registry: "your-account.dkr.ecr.us-east-1.amazonaws.com"
+    default_pull_policy: "IfNotPresent"
+    
+    # 5G Core defaults
+    fiveG_core:
+      amf:
+        default_replicas: 2
+        default_cpu: "1000m"
+        default_memory: "2Gi"
+        ports: [80, 8080, 29518]
+        
+      smf:
+        default_replicas: 2
+        default_cpu: "800m"
+        default_memory: "1.5Gi"
+        ports: [80, 8080, 29502]
+        
+      upf:
+        default_replicas: 1
+        default_cpu: "2000m"
+        default_memory: "4Gi"
+        ports: [8805, 2152]
+
+# Monitoring configuration
+monitoring:
+  prometheus:
+    enabled: true
+    namespace: "monitoring"
+    scrape_interval: "15s"
+    
+  grafana:
+    enabled: true
+    namespace: "monitoring"
+    admin_password: "admin123"
+    
+  cloudwatch:
+    enabled: true
+    log_group_prefix: "/aws/core-network"
+    metric_namespace: "CoreNetwork"
+
+# Security configuration
+security:
+  enable_rbac: true
+  enable_network_policies: true
+  
+  # IAM configuration
+  iam:
+    role_prefix: "CoreNetworkAgent"
+    policy_prefix: "CoreNetworkPolicy"
+    
+  # Secrets management
+  secrets:
+    use_aws_secrets_manager: true
+    secret_prefix: "core-network/"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "json"
+  
+  # Log destinations
+  destinations:
+    console: true
+    cloudwatch: true
+    file: false
+    
+  # Structured logging fields
+  fields:
+    service: "core-network-devops-agent"
+    version: "1.0.0"
+    environment: "production"
