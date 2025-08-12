@@ -15,7 +15,7 @@ from rich.table import Table
 from rich.prompt import Prompt, Confirm
 import structlog
 
-from .agent import CoreNetworkAgent
+from .core_agent import CoreNetworkDevOpsAgent
 from .utils.aws_client import AWSClientManager
 
 # Configure console
@@ -106,11 +106,15 @@ def chat(ctx):
     # Initialize agent
     try:
         model_config = config.get('agent', {}).get('model', {})
-        agent = CoreNetworkAgent(
+        agent = CoreNetworkDevOpsAgent(
+            name=config.get('agent', {}).get('name', 'CoreNetworkDevOpsAgent'),
             model_id=model_config.get('model_id', 'anthropic.claude-3-sonnet-20240229-v1:0'),
             region=model_config.get('region', 'us-east-1'),
             config=config
         )
+        
+        # Initialize the agent
+        asyncio.run(agent.initialize())
         
         # Verify AWS connectivity
         aws_manager = AWSClientManager(region=model_config.get('region', 'us-east-1'))
@@ -143,7 +147,7 @@ def chat(ctx):
     asyncio.run(chat_loop(agent))
 
 
-async def chat_loop(agent: CoreNetworkAgent):
+async def chat_loop(agent: CoreNetworkDevOpsAgent):
     """Main chat interaction loop."""
     
     while True:
@@ -177,19 +181,19 @@ async def chat_loop(agent: CoreNetworkAgent):
             
             response = await agent.process_request(user_input)
             
-            if response.get('success', True):
+            if response.success:
                 console.print(Panel(
-                    response['content'],
+                    response.content,
                     title="🤖 Agent Response",
                     border_style="blue"
                 ))
                 
                 # Show tool results if available
-                if response.get('tool_results'):
-                    show_tool_results(response['tool_results'])
+                if response.tool_results:
+                    show_tool_results(response.tool_results)
             else:
                 console.print(Panel(
-                    f"[red]❌ Error: {response.get('content', 'Unknown error')}[/red]",
+                    f"[red]❌ Error: {response.content}[/red]",
                     title="Error",
                     border_style="red"
                 ))
@@ -236,7 +240,7 @@ def show_help():
     console.print(Panel(help_text, title="Help", border_style="cyan"))
 
 
-async def show_status(agent: CoreNetworkAgent):
+async def show_status(agent: CoreNetworkDevOpsAgent):
     """Show agent and system status."""
     console.print("[yellow]🔍 Checking system status...[/yellow]")
     
@@ -250,28 +254,28 @@ async def show_status(agent: CoreNetworkAgent):
     table.add_column("Details", style="dim")
     
     # Agent status
-    agent_status = "🟢 Healthy" if health['agent'] == 'healthy' else "🟡 Degraded"
-    table.add_row("Agent", agent_status, f"Model: {agent.model_id}")
+    agent_status = "🟢 Healthy" if health['status'] == 'healthy' else "🟡 Degraded"
+    table.add_row("Agent", agent_status, f"Model: {health['model_id']}")
     
-    # Component statuses
-    for component, status in health['components'].items():
-        if 'unhealthy' in status:
-            status_icon = "🔴 Unhealthy"
-            details = status.split(': ', 1)[1] if ': ' in status else status
+    # Tool health statuses
+    for tool_name, tool_status in health.get('tool_health', {}).items():
+        if isinstance(tool_status, dict) and tool_status.get('status') == 'error':
+            status_icon = "🔴 Error"
+            details = tool_status.get('error', 'Unknown error')
         else:
             status_icon = "🟢 Healthy"
-            details = "Connected"
+            details = "Available"
         
-        table.add_row(component.title(), status_icon, details)
+        table.add_row(f"Tool: {tool_name}", status_icon, details)
     
     console.print(table)
     
     # Show available tools
-    tools = agent.get_available_tools()
+    tools = list(agent.get_tools().keys())
     console.print(f"\n[cyan]Available Tools:[/cyan] {', '.join(tools)}")
 
 
-def show_history(agent: CoreNetworkAgent):
+def show_history(agent: CoreNetworkDevOpsAgent):
     """Show conversation history."""
     history = agent.get_conversation_history()
     
@@ -316,27 +320,29 @@ def show_tool_results(tool_results: dict):
 
 @cli.command()
 @click.pass_context
-async def health(ctx):
+def health(ctx):
     """Check agent and system health."""
     config = ctx.obj['config']
     
     try:
         model_config = config.get('agent', {}).get('model', {})
-        agent = CoreNetworkAgent(
+        agent = CoreNetworkDevOpsAgent(
+            name=config.get('agent', {}).get('name', 'CoreNetworkDevOpsAgent'),
             model_id=model_config.get('model_id', 'anthropic.claude-3-sonnet-20240229-v1:0'),
             region=model_config.get('region', 'us-east-1'),
             config=config
         )
         
-        health = await agent.health_check()
+        asyncio.run(agent.initialize())
+        health = asyncio.run(agent.health_check())
         
-        if health['agent'] == 'healthy':
+        if health['status'] == 'healthy':
             console.print("[green]✅ Agent is healthy[/green]")
             sys.exit(0)
         else:
             console.print("[yellow]⚠️ Agent is degraded[/yellow]")
-            for component, status in health['components'].items():
-                console.print(f"  {component}: {status}")
+            for tool_name, tool_status in health.get('tool_health', {}).items():
+                console.print(f"  {tool_name}: {tool_status}")
             sys.exit(1)
             
     except Exception as e:

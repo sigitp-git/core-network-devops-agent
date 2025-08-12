@@ -22,7 +22,7 @@ setup(
     version="1.0.0",
     author="Core Network DevOps Team",
     author_email="core-network-devops@example.com",
-    description="AI agent for core network infrastructure and DevOps operations using Amazon Bedrock AgentCore",
+    description="AI agent built with Amazon Bedrock AgentCore framework for core network infrastructure and DevOps operations",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/your-org/core-network-devops-agent",
@@ -98,9 +98,9 @@ setup(
     
     # Keywords
     keywords=[
-        "ai", "agent", "bedrock", "aws", "5g", "core-network", 
-        "devops", "kubernetes", "infrastructure", "automation",
-        "network-functions", "telecommunications"
+        "ai", "agent", "bedrock", "agentcore", "framework", "aws", "5g", "core-network", 
+        "devops", "kubernetes", "infrastructure", "automation", "decorators",
+        "network-functions", "telecommunications", "tool-registry", "conversation-memory"
     ],
     
     # Project URLs
